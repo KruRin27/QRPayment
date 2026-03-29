@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>คำนวณอายุ(Calculate age)</title>
 
+<style>
+  body {
+    font-family: Tahoma, sans-serif;
+    text-align: center;
+    margin-top: 30px;
+    background: #ffe6f0;
+  }
+
+  .container {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    width: 320px;
+    margin: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+
+  img {
+    width: 200px;
+    margin-bottom: 15px;
+  }
+
+  h2 {
+    color: #ff3399;
+  }
+
+  input {
+    padding: 10px;
+    margin: 10px;
+    font-size: 16px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+  }
+
+  button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background: #ff3399;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #e60073;
+  }
+
+  #result {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #cc0066;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- 🔥 โลโก้ -->
+  <img src="logo.png" alt="logo">
+
+  <h2>คำนวณอายุ(Calculate age)</h2>
+
+  <p>ระบุวันเดือนปีเกิด(Enter date of birth)</p>
+  <input type="date" id="birthday">
+
+  <br>
+  <button onclick="calculateAge()">คำนวณ(Calculate)</button>
+
+  <div id="result"></div>
+  <div id="result2"></div>
+
+</div>
+
+<script>
+function calculateAge() {
+  let input = document.getElementById("birthday").value;
+
+  if (!input) {
+    alert("กรุณาเลือกวันเกิด(Please select your date of birth)");
+    return;
+  }
+
+  let birth = new Date(input);
+
+  // เป้าหมาย: 31 พฤษภาคม 2569 (2026)
+  let target = new Date(2026, 4, 31);
+
+  let years = target.getFullYear() - birth.getFullYear();
+  let months = target.getMonth() - birth.getMonth();
+
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  if (target.getDate() < birth.getDate()) {
+    months--;
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+  }
+
+  document.getElementById("result").innerText =
+    "อายุ(Age): " + years + " ปี(Years) " + months + " เดือน(Months)";
+
+}
+</script>
+
+</body>
+</html>
