@@ -83,7 +83,7 @@
 
 <script>
 function calculateAge() {
-  let amount = "{teamName}";  // ดึงค่าจาก Jotform
+  var STATUS_FIELD = "input_47"; // ฟิลด์สถานะ
   let input = document.getElementById("birthday").value;
 
   if (!input) {
@@ -113,7 +113,7 @@ function calculateAge() {
   }
 
   document.getElementById("result").innerText =
-    "อายุ(Age): " + years + " ปี(Years) " + months + " เดือน(Months)" + amount;
+    "อายุ(Age): " + years + " ปี(Years) " + months + " เดือน(Months)" + STATUS_FIELD;
 
 }
 </script>
