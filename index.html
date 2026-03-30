@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Age Calculator Widget</title>
   <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+
+  <!-- Flatpickr -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.min.js"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,14 +22,14 @@
       color: #333;
     }
     .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    label { white-space: nowrap; color: #555; font-size: 16px; }
-    input[type="date"] {
+    #dobDisplay {
       flex: 1; min-width: 160px;
       padding: 8px 12px;
       border: 1px solid #ccc; border-radius: 5px;
       font-size: 16px; font-family: inherit; outline: none;
+      background: #fff; cursor: pointer;
     }
-    input[type="date"]:focus { border-color: #0099e5; }
+    #dobDisplay:focus { border-color: #0099e5; }
     button {
       padding: 8px 18px; background: #0099e5; color: #fff;
       border: none; border-radius: 5px;
@@ -40,41 +46,69 @@
     .result-item { display: flex; flex-direction: column; align-items: center; }
     .result-item strong { font-size: 38px; color: #0077bb; line-height: 1; font-weight: 600; }
     .result-item span { font-size: 15px; color: #4a9fc0; margin-top: 4px; }
-    .ref-date { font-size: 13px; color: #888; margin-top: 8px; width: 100%; }
     .error { margin-top: 6px; color: #c0392b; font-size: 14px; display: none; }
     .error.show { display: block; }
+
+    /* Flatpickr custom theme */
+    .flatpickr-calendar { font-family: 'Sarabun', sans-serif !important; font-size: 15px !important; }
+    .flatpickr-months .flatpickr-month { background: #0099e5 !important; }
+    .flatpickr-current-month, .flatpickr-monthDropdown-months,
+    .cur-year, .flatpickr-prev-month svg, .flatpickr-next-month svg { color: #fff !important; fill: #fff !important; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #0099e5 !important; border-color: #0099e5 !important; }
+    .flatpickr-day:hover { background: #e0f3fc !important; }
+    .flatpickr-weekday { color: #0077bb !important; font-weight: 600; }
   </style>
 </head>
 <body>
 
   <div class="row">
-    <input type="date" id="dob">
-    <button id="calcBtn">คำนวณอายุ(Age Calculate)</button>
+    <input type="text" id="dobDisplay" placeholder="เลือกวันเกิด / Date of birth" readonly>
+    <button id="calcBtn">คำนวณอายุ (Age Calculate)</button>
   </div>
 
-  <div class="error" id="errorMsg">ระบุวันเกิด(Enter date of birth
-)</div>
+  <div class="error" id="errorMsg">ระบุวันเกิด (Enter date of birth)</div>
 
   <div class="result" id="resultBox">
     <div class="result-item">
       <strong id="ageYear">-</strong>
-      <span>ปี(years)</span>
+      <span>ปี (years)</span>
     </div>
     <div class="result-item">
       <strong id="ageMonth">-</strong>
-      <span>เดือน(month)</span>
+      <span>เดือน (month)</span>
     </div>
   </div>
 
 <script>
   var REF_DATE = new Date(2026, 4, 31);
 
-  document.getElementById('dob').max = new Date().toISOString().split('T')[0];
-
   var currentYear  = "";
   var currentMonth = "";
-  var currentDob   = "";
+  var currentDob   = ""; // YYYY-MM-DD
 
+  // =========================================================
+  // Flatpickr — ปฏิทินโชว์เมื่อคลิก
+  // =========================================================
+  var picker = flatpickr("#dobDisplay", {
+    locale:        "th",
+    dateFormat:    "d/m/Y",       // แสดงผล DD/MM/YYYY
+    maxDate:       new Date(),    // ไม่เกินวันนี้
+    disableMobile: false,
+    onChange: function(selectedDates) {
+      if (selectedDates.length > 0) {
+        var d = selectedDates[0];
+        currentDob = d.getFullYear() + "-"
+          + String(d.getMonth() + 1).padStart(2, '0') + "-"
+          + String(d.getDate()).padStart(2, '0');
+        // คำนวณอัตโนมัติทันทีที่เลือกวัน
+        calculate(currentDob);
+      }
+    }
+  });
+
+  // =========================================================
+  // postMessage (สำรองไว้ ถ้า JotForm รองรับในอนาคต)
+  // =========================================================
   function fillField(fieldName, value) {
     window.parent.postMessage(JSON.stringify({
       type:      "setFieldValue",
@@ -91,13 +125,16 @@
     fillField("age_month", ageM);
   }
 
+  // =========================================================
+  // buildValue → "DD,MM,YYYY,age_year,age_month"
+  // =========================================================
   function buildValue() {
-    var parts = currentDob.split("-");
+    var parts = currentDob.split("-"); // [YYYY, MM, DD]
     return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
   }
 
   // =========================================================
-  // ฟังก์ชันคำนวณหลัก — ใช้ร่วมกันทั้งปุ่มและ onChange
+  // ฟังก์ชันคำนวณหลัก
   // =========================================================
   function calculate(dobVal) {
     var errorEl = document.getElementById('errorMsg');
@@ -125,7 +162,7 @@
     var p = currentDob.split("-");
     sendToFields(p[2], p[1], p[0], currentYear, currentMonth);
 
-    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
+    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight + 320 });
   }
 
   // =========================================================
@@ -140,11 +177,12 @@
         currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0];
         currentYear  = parts[3];
         currentMonth = parts[4];
+        // โหลดวันเดิมเข้า Flatpickr
+        picker.setDate(parts[0] + "/" + parts[1] + "/" + parts[2], false, "d/m/Y");
+        document.getElementById('ageYear').textContent  = currentYear;
+        document.getElementById('ageMonth').textContent = currentMonth;
+        document.getElementById('resultBox').classList.add('show');
       }
-      if (currentDob) document.getElementById('dob').value = currentDob;
-      document.getElementById('ageYear').textContent  = currentYear;
-      document.getElementById('ageMonth').textContent = currentMonth;
-      document.getElementById('resultBox').classList.add('show');
     }
 
     JFCustomWidget.subscribe("submit", function () {
@@ -156,16 +194,13 @@
 
   });
 
-  // =========================================================
-  // คำนวณอัตโนมัติเมื่อเลือกวันเกิด (onChange)
-  // =========================================================
-  document.getElementById('dob').addEventListener('change', function () {
-    calculate(this.value);
-  });
-
   // ปุ่มคำนวณ — สำหรับกรณีต้องการคำนวณซ้ำ
   document.getElementById('calcBtn').addEventListener('click', function () {
-    calculate(document.getElementById('dob').value);
+    if (!currentDob) {
+      picker.open(); // เปิดปฏิทินถ้ายังไม่ได้เลือกวัน
+      return;
+    }
+    calculate(currentDob);
   });
 </script>
 
