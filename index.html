@@ -1,46 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Age Calculator Widget</title>
+
+  <!-- Step 1 ตามคู่มือ: โหลด JotForm Custom Widget API -->
+  <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: #fff;
+      padding: 12px;
+      font-size: 14px;
+      color: #333;
+    }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    label { white-space: nowrap; color: #555; }
+    input[type="date"] {
+      flex: 1; min-width: 150px;
+      padding: 7px 10px;
+      border: 1px solid #ccc; border-radius: 5px;
+      font-size: 14px; font-family: inherit; outline: none;
+    }
+    input[type="date"]:focus { border-color: #0099e5; }
+    button {
+      padding: 7px 16px; background: #0099e5; color: #fff;
+      border: none; border-radius: 5px;
+      font-size: 14px; font-family: inherit; cursor: pointer;
+    }
+    button:hover { background: #007bbf; }
+    .result {
+      margin-top: 10px; padding: 8px 12px;
+      background: #f0f9ff; border: 1px solid #b3e0f7;
+      border-radius: 5px; color: #005f8a; display: none;
+    }
+    .result.show { display: block; }
+    .result strong { font-size: 20px; color: #0077bb; }
+    .error { margin-top: 6px; color: #c0392b; font-size: 13px; display: none; }
+    .error.show { display: block; }
+  </style>
 </head>
 <body>
 
-<input type="date" id="birthday">
-<button onclick="sendAge()">คำนวณ</button>
+  <div class="row">
+    <label for="dob">วันเกิด:</label>
+    <input type="date" id="dob">
+    <button id="calcBtn">คำนวณอายุ</button>
+  </div>
 
-<p id="result"></p>
+  <div class="error" id="errorMsg">⚠ กรุณาเลือกวันเกิดก่อนครับ</div>
+
+  <div class="result" id="resultBox">
+    อายุ: <strong id="ageYear">-</strong> ปี
+    &nbsp;(<span id="ageDetail"></span>)
+  </div>
 
 <script>
-function sendAge() {
-  let birth = new Date(document.getElementById("birthday").value);
-  let target = new Date(2026,4,31);
+  document.getElementById('dob').max = new Date().toISOString().split('T')[0];
 
-  let years = target.getFullYear() - birth.getFullYear();
-  let months = target.getMonth() - birth.getMonth();
+  var currentAge = "";
 
-  if (months < 0) {
-    years--;
-    months += 12;
-  }
+  // ตามคู่มือ: subscribe "ready" ก่อนเสมอ
+  JFCustomWidget.subscribe("ready", function () {
 
-  if (target.getDate() < birth.getDate()) {
-    months--;
-    if (months < 0) {
-      years--;
-      months += 12;
+    // โหลดค่าเดิม กรณีผู้ใช้แก้ไข submission
+    var savedValue = JFCustomWidget.getValue();
+    if (savedValue) {
+      document.getElementById('ageYear').textContent = savedValue;
+      document.getElementById('ageDetail').textContent = savedValue + ' ปี';
+      document.getElementById('resultBox').classList.add('show');
+      currentAge = savedValue;
     }
-  }
 
-  let result = years + " ปี " + months + " เดือน";
+    // ตามคู่มือ: subscribe "submit" เพื่อส่งค่าตอน form ถูก submit
+    JFCustomWidget.subscribe("submit", function () {
+      JFCustomWidget.sendSubmit({
+        valid: currentAge !== "",
+        value: currentAge
+      });
+    });
 
-  document.getElementById("result").innerText = result;
-
-  // 🔥 ส่งค่ากลับเข้า Jotform
-  JFCustomWidget.sendSubmit({
-    valid: true,
-    value: result
   });
-}
+
+  // คำนวณอายุเมื่อกดปุ่ม + sendData() ทันที
+  document.getElementById('calcBtn').addEventListener('click', function () {
+    var dobVal  = document.getElementById('dob').value;
+    var errorEl = document.getElementById('errorMsg');
+
+    if (!dobVal) { errorEl.classList.add('show'); return; }
+    errorEl.classList.remove('show');
+
+    var dob   = new Date(dobVal);
+    var today = new Date();
+    var years  = today.getFullYear() - dob.getFullYear();
+    var months = today.getMonth()    - dob.getMonth();
+    var days   = today.getDate()     - dob.getDate();
+
+    if (days < 0) {
+      months--;
+      days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    }
+    if (months < 0) { years--; months += 12; }
+
+    currentAge = years.toString();
+
+    document.getElementById('ageYear').textContent   = years;
+    document.getElementById('ageDetail').textContent =
+      years + ' ปี ' + months + ' เดือน ' + days + ' วัน';
+    document.getElementById('resultBox').classList.add('show');
+
+    // ส่งค่าไปยัง JotForm field ทันที
+    JFCustomWidget.sendData({ value: currentAge });
+
+    // ปรับ iframe ให้พอดีกับเนื้อหา
+    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
+  });
 </script>
 
 </body>
