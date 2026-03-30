@@ -77,21 +77,43 @@
   var currentMonth = "";
   var currentDob   = "";
 
-  // สร้างค่าผลลัพธ์รูปแบบ "DD,MM,YYYY,ปี,เดือน"
-  function buildValue() {
-    var parts = currentDob.split("-"); // YYYY-MM-DD
-    var dd = parts[2], mm = parts[1], yyyy = parts[0];
-    return dd + "," + mm + "," + yyyy + "," + currentYear + "," + currentMonth;
+  // ดึง formId เพื่อใช้ส่ง postMessage ไปยัง Hidden Fields
+  var jfFormId = "";
+
+  // -------------------------------------------------
+  // ส่งค่าไปยัง Hidden Fields ผ่าน postMessage
+  // JotForm รับ event "setParameter" เพื่ออัปเดต field
+  // -------------------------------------------------
+  function sendToHiddenFields(dd, mm, yyyy, ageY, ageM) {
+    var fields = {
+      day:       dd,
+      month:     mm,
+      year:      yyyy,
+      age_year:  ageY,
+      age_month: ageM
+    };
+
+    Object.keys(fields).forEach(function(fieldName) {
+      window.parent.postMessage(JSON.stringify({
+        action:    "setParameter",
+        fieldName: fieldName,
+        value:     fields[fieldName]
+      }), "*");
+    });
   }
 
-    JFCustomWidget.subscribe("ready", function () {
+  // -------------------------------------------------
+  // JotForm Widget API
+  // -------------------------------------------------
+  JFCustomWidget.subscribe("ready", function (data) {
+    jfFormId = (data && data.formId) ? data.formId : "";
 
     var savedValue = JFCustomWidget.getValue();
     if (savedValue) {
-      // รูปแบบที่บันทึก: "DD,MM,YYYY,years,months"
+      // รูปแบบที่บันทึก: "DD,MM,YYYY,age_year,age_month"
       var parts = savedValue.split(",");
       if (parts.length === 5) {
-        currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0]; // แปลงกลับเป็น YYYY-MM-DD
+        currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0];
         currentYear  = parts[3];
         currentMonth = parts[4];
       }
@@ -107,9 +129,19 @@
         value: buildValue()
       });
     });
-
   });
 
+  // -------------------------------------------------
+  // สร้าง string ผลลัพธ์ "DD,MM,YYYY,age_year,age_month"
+  // -------------------------------------------------
+  function buildValue() {
+    var parts = currentDob.split("-"); // YYYY-MM-DD
+    return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
+  }
+
+  // -------------------------------------------------
+  // คำนวณเมื่อกดปุ่ม
+  // -------------------------------------------------
   document.getElementById('calcBtn').addEventListener('click', function () {
     var dobVal  = document.getElementById('dob').value;
     var errorEl = document.getElementById('errorMsg');
@@ -126,7 +158,7 @@
     if (days < 0)   { months--; }
     if (months < 0) { years--; months += 12; }
 
-    currentDob   = dobVal;          // รูปแบบ YYYY-MM-DD
+    currentDob   = dobVal;
     currentYear  = years.toString();
     currentMonth = months.toString();
 
@@ -134,8 +166,13 @@
     document.getElementById('ageMonth').textContent = currentMonth;
     document.getElementById('resultBox').classList.add('show');
 
-    // ส่งค่า "DD,MM,YYYY,ปี,เดือน" เช่น "15,06,1990,35,11"
+    // 1) ส่งค่ารวมกลับ Widget field
     JFCustomWidget.sendData({ value: buildValue() });
+
+    // 2) ส่งแยกไปยัง Hidden Fields แต่ละช่อง
+    var p = currentDob.split("-"); // [YYYY, MM, DD]
+    sendToHiddenFields(p[2], p[1], p[0], currentYear, currentMonth);
+
     JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
   });
 </script>
