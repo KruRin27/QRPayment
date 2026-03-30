@@ -34,13 +34,13 @@
       margin-top: 12px; padding: 12px 18px;
       background: #f0f9ff; border: 1px solid #b3e0f7;
       border-radius: 5px; color: #005f8a;
-      display: none; gap: 32px; align-items: flex-end;
+      display: none; gap: 32px; align-items: flex-end; flex-wrap: wrap;
     }
-    .result.show { display: flex; flex-wrap: wrap; }
+    .result.show { display: flex; }
     .result-item { display: flex; flex-direction: column; align-items: center; }
     .result-item strong { font-size: 38px; color: #0077bb; line-height: 1; font-weight: 600; }
     .result-item span { font-size: 15px; color: #4a9fc0; margin-top: 4px; }
-    .ref-date { font-size: 13px; color: #888; margin-top: 8px; }
+    .ref-date { font-size: 13px; color: #888; margin-top: 8px; width: 100%; }
     .error { margin-top: 6px; color: #c0392b; font-size: 14px; display: none; }
     .error.show { display: block; }
   </style>
@@ -69,20 +69,27 @@
 
 <script>
   // วันที่อ้างอิง: 31 พฤษภาคม 2569 (ค.ศ. 2026)
-  var REF_DATE = new Date(2026, 4, 31); // month index 4 = พฤษภาคม
+  var REF_DATE = new Date(2026, 4, 31);
 
   document.getElementById('dob').max = new Date().toISOString().split('T')[0];
 
   var currentYear  = "";
   var currentMonth = "";
+  var currentDob   = "";
 
   JFCustomWidget.subscribe("ready", function () {
 
     var savedValue = JFCustomWidget.getValue();
     if (savedValue) {
-      var parts = savedValue.split(",");
-      currentYear  = parts[0] || "";
-      currentMonth = parts[1] || "";
+      // รูปแบบที่บันทึก: "dob|years,months"
+      var parts = savedValue.split("|");
+      currentDob = parts[0] || "";
+      if (parts[1]) {
+        var ageParts = parts[1].split(",");
+        currentYear  = ageParts[0] || "";
+        currentMonth = ageParts[1] || "";
+      }
+      if (currentDob) document.getElementById('dob').value = currentDob;
       document.getElementById('ageYear').textContent  = currentYear;
       document.getElementById('ageMonth').textContent = currentMonth;
       document.getElementById('resultBox').classList.add('show');
@@ -91,7 +98,8 @@
     JFCustomWidget.subscribe("submit", function () {
       JFCustomWidget.sendSubmit({
         valid: currentYear !== "",
-        value: currentYear + "," + currentMonth
+        // ส่งออก: "วันเกิด|ปี,เดือน"  เช่น "1990-06-15|35,11"
+        value: currentDob + "|" + currentYear + "," + currentMonth
       });
     });
 
@@ -113,6 +121,7 @@
     if (days < 0)   { months--; }
     if (months < 0) { years--; months += 12; }
 
+    currentDob   = dobVal;          // รูปแบบ YYYY-MM-DD
     currentYear  = years.toString();
     currentMonth = months.toString();
 
@@ -120,7 +129,8 @@
     document.getElementById('ageMonth').textContent = currentMonth;
     document.getElementById('resultBox').classList.add('show');
 
-    JFCustomWidget.sendData({ value: currentYear + "," + currentMonth });
+    // ส่งค่า "วันเกิด|ปี,เดือน" ไปยัง JotForm field ทันที
+    JFCustomWidget.sendData({ value: currentDob + "|" + currentYear + "," + currentMonth });
     JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
   });
 </script>
