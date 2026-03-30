@@ -77,39 +77,17 @@
   var currentMonth = "";
   var currentDob   = "";
 
-  // =========================================================
-  // ส่งค่าไปยัง Short Text fields ใน JotForm
-  // โดยใช้ postMessage format ที่ JotForm รับได้จริง
-  // field name ต้องตรงกับ "Unique Name" ใน JotForm field
-  // =========================================================
-  function fillField(fieldName, value) {
-    window.parent.postMessage(JSON.stringify({
-      type:      "setFieldValue",
-      fieldName: fieldName,
-      value:     String(value)
-    }), "*");
-  }
-
-  function sendToFields(dd, mm, yyyy, ageY, ageM) {
-    fillField("day",       dd);
-    fillField("month",     mm);
-    fillField("year",      yyyy);
-    fillField("age_year",  ageY);
-    fillField("age_month", ageM);
-  }
-
-  // =========================================================
-  // JotForm Widget API
-  // =========================================================
   JFCustomWidget.subscribe("ready", function () {
 
     var savedValue = JFCustomWidget.getValue();
     if (savedValue) {
-      var parts = savedValue.split(",");
-      if (parts.length === 5) {
-        currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0];
-        currentYear  = parts[3];
-        currentMonth = parts[4];
+      // รูปแบบที่บันทึก: "dob|years,months"
+      var parts = savedValue.split("|");
+      currentDob = parts[0] || "";
+      if (parts[1]) {
+        var ageParts = parts[1].split(",");
+        currentYear  = ageParts[0] || "";
+        currentMonth = ageParts[1] || "";
       }
       if (currentDob) document.getElementById('dob').value = currentDob;
       document.getElementById('ageYear').textContent  = currentYear;
@@ -120,20 +98,13 @@
     JFCustomWidget.subscribe("submit", function () {
       JFCustomWidget.sendSubmit({
         valid: currentYear !== "",
-        value: buildValue()
+        // ส่งออก: "วันเกิด|ปี,เดือน"  เช่น "1990-06-15|35,11"
+        value: currentDob + "|" + currentYear + "," + currentMonth
       });
     });
 
   });
 
-  function buildValue() {
-    var parts = currentDob.split("-");
-    return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
-  }
-
-  // =========================================================
-  // คำนวณเมื่อกดปุ่ม
-  // =========================================================
   document.getElementById('calcBtn').addEventListener('click', function () {
     var dobVal  = document.getElementById('dob').value;
     var errorEl = document.getElementById('errorMsg');
@@ -150,7 +121,7 @@
     if (days < 0)   { months--; }
     if (months < 0) { years--; months += 12; }
 
-    currentDob   = dobVal;
+    currentDob   = dobVal;          // รูปแบบ YYYY-MM-DD
     currentYear  = years.toString();
     currentMonth = months.toString();
 
@@ -158,13 +129,8 @@
     document.getElementById('ageMonth').textContent = currentMonth;
     document.getElementById('resultBox').classList.add('show');
 
-    // ส่งค่ารวมกลับ Widget field ของตัวเอง
-    JFCustomWidget.sendData({ value: buildValue() });
-
-    // ส่งค่าแยกไปยัง Short Text fields
-    var p = currentDob.split("-");
-    sendToFields(p[2], p[1], p[0], currentYear, currentMonth);
-
+    // ส่งค่า "วันเกิด|ปี,เดือน" ไปยัง JotForm field ทันที
+    JFCustomWidget.sendData({ value: currentDob + "|" + currentYear + "," + currentMonth });
     JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
   });
 </script>
