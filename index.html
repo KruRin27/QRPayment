@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Age Calculator Widget</title>
   <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+
+  <!-- Flatpickr calendar -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/th.min.js"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -15,21 +21,31 @@
       font-size: 16px;
       color: #333;
     }
+
     .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     label { white-space: nowrap; color: #555; font-size: 16px; }
-    input[type="date"] {
+
+    /* ซ่อน input จริง ใช้ flatpickr แทน */
+    #dobHidden { display: none; }
+
+    /* input ที่แสดงผล */
+    #dobDisplay {
       flex: 1; min-width: 160px;
       padding: 8px 12px;
       border: 1px solid #ccc; border-radius: 5px;
       font-size: 16px; font-family: inherit; outline: none;
+      background: #fff;
+      cursor: pointer;
     }
-    input[type="date"]:focus { border-color: #0099e5; }
+    #dobDisplay:focus { border-color: #0099e5; }
+
     button {
       padding: 8px 18px; background: #0099e5; color: #fff;
       border: none; border-radius: 5px;
       font-size: 16px; font-family: inherit; cursor: pointer;
     }
     button:hover { background: #007bbf; }
+
     .result {
       margin-top: 12px; padding: 12px 18px;
       background: #f0f9ff; border: 1px solid #b3e0f7;
@@ -41,15 +57,41 @@
     .result-item strong { font-size: 38px; color: #0077bb; line-height: 1; font-weight: 600; }
     .result-item span { font-size: 15px; color: #4a9fc0; margin-top: 4px; }
     .ref-date { font-size: 13px; color: #888; margin-top: 8px; width: 100%; }
+
     .error { margin-top: 6px; color: #c0392b; font-size: 14px; display: none; }
     .error.show { display: block; }
+
+    /* Flatpickr custom style */
+    .flatpickr-calendar {
+      font-family: 'Sarabun', sans-serif !important;
+      font-size: 15px !important;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.selected:hover {
+      background: #0099e5 !important;
+      border-color: #0099e5 !important;
+    }
+    .flatpickr-months .flatpickr-month {
+      background: #0099e5 !important;
+    }
+    .flatpickr-current-month,
+    .flatpickr-monthDropdown-months,
+    .numInputWrapper span,
+    .cur-year {
+      color: #fff !important;
+    }
+    .flatpickr-weekday {
+      color: #0077bb !important;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
 
   <div class="row">
-    <label for="dob">วันเกิด:</label>
-    <input type="date" id="dob">
+    <label for="dobDisplay">วันเกิด:</label>
+    <input type="text" id="dobDisplay" placeholder="เลือกวันเกิด" readonly>
+    <input type="hidden" id="dobHidden">
     <button id="calcBtn">คำนวณอายุ</button>
   </div>
 
@@ -64,23 +106,39 @@
       <strong id="ageMonth">-</strong>
       <span>เดือน</span>
     </div>
-    <div class="ref-date">นับถึง พฤษภาคม 2569</div>
+    <div class="ref-date">นับถึง 31 พฤษภาคม 2569</div>
   </div>
 
 <script>
-  // วันที่อ้างอิง: 31 พฤษภาคม 2569 (ค.ศ. 2026)
   var REF_DATE = new Date(2026, 4, 31);
-
-  document.getElementById('dob').max = new Date().toISOString().split('T')[0];
 
   var currentYear  = "";
   var currentMonth = "";
-  var currentDob   = "";
+  var currentDob   = ""; // YYYY-MM-DD
 
   // =========================================================
-  // ส่งค่าไปยัง Short Text fields ใน JotForm
-  // โดยใช้ postMessage format ที่ JotForm รับได้จริง
-  // field name ต้องตรงกับ "Unique Name" ใน JotForm field
+  // Flatpickr — ปฏิทินโชว์บนฟอร์ม
+  // =========================================================
+  var picker = flatpickr("#dobDisplay", {
+    locale:      "th",
+    dateFormat:  "d/m/Y",          // แสดงผล DD/MM/YYYY
+    altInput:    false,
+    maxDate:     new Date(),        // ไม่เกินวันปัจจุบัน
+    disableMobile: false,
+    onChange: function(selectedDates, dateStr) {
+      if (selectedDates.length > 0) {
+        var d = selectedDates[0];
+        // เก็บในรูป YYYY-MM-DD สำหรับคำนวณ
+        currentDob = d.getFullYear() + "-"
+          + String(d.getMonth()+1).padStart(2,'0') + "-"
+          + String(d.getDate()).padStart(2,'0');
+        document.getElementById('dobHidden').value = currentDob;
+      }
+    }
+  });
+
+  // =========================================================
+  // postMessage ไปยัง Short Text fields (ถ้ามี)
   // =========================================================
   function fillField(fieldName, value) {
     window.parent.postMessage(JSON.stringify({
@@ -99,6 +157,14 @@
   }
 
   // =========================================================
+  // buildValue → "DD,MM,YYYY,age_year,age_month"
+  // =========================================================
+  function buildValue() {
+    var parts = currentDob.split("-"); // [YYYY, MM, DD]
+    return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
+  }
+
+  // =========================================================
   // JotForm Widget API
   // =========================================================
   JFCustomWidget.subscribe("ready", function () {
@@ -107,14 +173,18 @@
     if (savedValue) {
       var parts = savedValue.split(",");
       if (parts.length === 5) {
+        // parts: [DD, MM, YYYY, age_year, age_month]
         currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0];
         currentYear  = parts[3];
         currentMonth = parts[4];
+
+        // โหลดวันเกิดเดิมลง Flatpickr
+        picker.setDate(parts[0] + "/" + parts[1] + "/" + parts[2], false, "d/m/Y");
+
+        document.getElementById('ageYear').textContent  = currentYear;
+        document.getElementById('ageMonth').textContent = currentMonth;
+        document.getElementById('resultBox').classList.add('show');
       }
-      if (currentDob) document.getElementById('dob').value = currentDob;
-      document.getElementById('ageYear').textContent  = currentYear;
-      document.getElementById('ageMonth').textContent = currentMonth;
-      document.getElementById('resultBox').classList.add('show');
     }
 
     JFCustomWidget.subscribe("submit", function () {
@@ -126,22 +196,16 @@
 
   });
 
-  function buildValue() {
-    var parts = currentDob.split("-");
-    return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
-  }
-
   // =========================================================
   // คำนวณเมื่อกดปุ่ม
   // =========================================================
   document.getElementById('calcBtn').addEventListener('click', function () {
-    var dobVal  = document.getElementById('dob').value;
     var errorEl = document.getElementById('errorMsg');
 
-    if (!dobVal) { errorEl.classList.add('show'); return; }
+    if (!currentDob) { errorEl.classList.add('show'); return; }
     errorEl.classList.remove('show');
 
-    var dob = new Date(dobVal);
+    var dob = new Date(currentDob);
 
     var years  = REF_DATE.getFullYear() - dob.getFullYear();
     var months = REF_DATE.getMonth()    - dob.getMonth();
@@ -150,7 +214,6 @@
     if (days < 0)   { months--; }
     if (months < 0) { years--; months += 12; }
 
-    currentDob   = dobVal;
     currentYear  = String(years).padStart(2, '0');
     currentMonth = String(months).padStart(2, '0');
 
@@ -158,14 +221,12 @@
     document.getElementById('ageMonth').textContent = currentMonth;
     document.getElementById('resultBox').classList.add('show');
 
-    // ส่งค่ารวมกลับ Widget field ของตัวเอง
     JFCustomWidget.sendData({ value: buildValue() });
 
-    // ส่งค่าแยกไปยัง Short Text fields
     var p = currentDob.split("-");
     sendToFields(p[2], p[1], p[0], currentYear, currentMonth);
 
-    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
+    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight + 300 });
   });
 </script>
 
