@@ -151,8 +151,8 @@
     if (months < 0) { years--; months += 12; }
 
     currentDob   = dobVal;
-    currentYear  = years.toString();
-    currentMonth = months.toString();
+    currentYear  = String(years).padStart(2, '0');
+    currentMonth = String(months).padStart(2, '0');
 
     document.getElementById('ageYear').textContent  = currentYear;
     document.getElementById('ageMonth').textContent = currentMonth;
