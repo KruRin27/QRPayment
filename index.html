@@ -68,7 +68,6 @@
   </div>
 
 <script>
-  // วันที่อ้างอิง: 31 พฤษภาคม 2569 (ค.ศ. 2026)
   var REF_DATE = new Date(2026, 4, 31);
 
   document.getElementById('dob').max = new Date().toISOString().split('T')[0];
@@ -77,11 +76,6 @@
   var currentMonth = "";
   var currentDob   = "";
 
-  // =========================================================
-  // ส่งค่าไปยัง Short Text fields ใน JotForm
-  // โดยใช้ postMessage format ที่ JotForm รับได้จริง
-  // field name ต้องตรงกับ "Unique Name" ใน JotForm field
-  // =========================================================
   function fillField(fieldName, value) {
     window.parent.postMessage(JSON.stringify({
       type:      "setFieldValue",
@@ -96,6 +90,43 @@
     fillField("year",      yyyy);
     fillField("age_year",  ageY);
     fillField("age_month", ageM);
+  }
+
+  function buildValue() {
+    var parts = currentDob.split("-");
+    return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
+  }
+
+  // =========================================================
+  // ฟังก์ชันคำนวณหลัก — ใช้ร่วมกันทั้งปุ่มและ onChange
+  // =========================================================
+  function calculate(dobVal) {
+    var errorEl = document.getElementById('errorMsg');
+    if (!dobVal) { errorEl.classList.add('show'); return; }
+    errorEl.classList.remove('show');
+
+    var dob    = new Date(dobVal);
+    var years  = REF_DATE.getFullYear() - dob.getFullYear();
+    var months = REF_DATE.getMonth()    - dob.getMonth();
+    var days   = REF_DATE.getDate()     - dob.getDate();
+
+    if (days < 0)   { months--; }
+    if (months < 0) { years--; months += 12; }
+
+    currentDob   = dobVal;
+    currentYear  = String(years).padStart(2, '0');
+    currentMonth = String(months).padStart(2, '0');
+
+    document.getElementById('ageYear').textContent  = currentYear;
+    document.getElementById('ageMonth').textContent = currentMonth;
+    document.getElementById('resultBox').classList.add('show');
+
+    JFCustomWidget.sendData({ value: buildValue() });
+
+    var p = currentDob.split("-");
+    sendToFields(p[2], p[1], p[0], currentYear, currentMonth);
+
+    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
   }
 
   // =========================================================
@@ -126,46 +157,16 @@
 
   });
 
-  function buildValue() {
-    var parts = currentDob.split("-");
-    return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
-  }
+  // =========================================================
+  // คำนวณอัตโนมัติเมื่อเลือกวันเกิด (onChange)
+  // =========================================================
+  document.getElementById('dob').addEventListener('change', function () {
+    calculate(this.value);
+  });
 
-  // =========================================================
-  // คำนวณเมื่อกดปุ่ม
-  // =========================================================
+  // ปุ่มคำนวณ — สำหรับกรณีต้องการคำนวณซ้ำ
   document.getElementById('calcBtn').addEventListener('click', function () {
-    var dobVal  = document.getElementById('dob').value;
-    var errorEl = document.getElementById('errorMsg');
-
-    if (!dobVal) { errorEl.classList.add('show'); return; }
-    errorEl.classList.remove('show');
-
-    var dob = new Date(dobVal);
-
-    var years  = REF_DATE.getFullYear() - dob.getFullYear();
-    var months = REF_DATE.getMonth()    - dob.getMonth();
-    var days   = REF_DATE.getDate()     - dob.getDate();
-
-    if (days < 0)   { months--; }
-    if (months < 0) { years--; months += 12; }
-
-    currentDob   = dobVal;
-    currentYear  = String(years).padStart(2, '0');
-    currentMonth = String(months).padStart(2, '0');
-
-    document.getElementById('ageYear').textContent  = currentYear;
-    document.getElementById('ageMonth').textContent = currentMonth;
-    document.getElementById('resultBox').classList.add('show');
-
-    // ส่งค่ารวมกลับ Widget field ของตัวเอง
-    JFCustomWidget.sendData({ value: buildValue() });
-
-    // ส่งค่าแยกไปยัง Short Text fields
-    var p = currentDob.split("-");
-    sendToFields(p[2], p[1], p[0], currentYear, currentMonth);
-
-    JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
+    calculate(document.getElementById('dob').value);
   });
 </script>
 
