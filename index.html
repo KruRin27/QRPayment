@@ -77,17 +77,23 @@
   var currentMonth = "";
   var currentDob   = "";
 
-  JFCustomWidget.subscribe("ready", function () {
+  // สร้างค่าผลลัพธ์รูปแบบ "DD,MM,YYYY,ปี,เดือน"
+  function buildValue() {
+    var parts = currentDob.split("-"); // YYYY-MM-DD
+    var dd = parts[2], mm = parts[1], yyyy = parts[0];
+    return dd + "," + mm + "," + yyyy + "," + currentYear + "," + currentMonth;
+  }
+
+    JFCustomWidget.subscribe("ready", function () {
 
     var savedValue = JFCustomWidget.getValue();
     if (savedValue) {
-      // รูปแบบที่บันทึก: "dob|years,months"
-      var parts = savedValue.split("|");
-      currentDob = parts[0] || "";
-      if (parts[1]) {
-        var ageParts = parts[1].split(",");
-        currentYear  = ageParts[0] || "";
-        currentMonth = ageParts[1] || "";
+      // รูปแบบที่บันทึก: "DD,MM,YYYY,years,months"
+      var parts = savedValue.split(",");
+      if (parts.length === 5) {
+        currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0]; // แปลงกลับเป็น YYYY-MM-DD
+        currentYear  = parts[3];
+        currentMonth = parts[4];
       }
       if (currentDob) document.getElementById('dob').value = currentDob;
       document.getElementById('ageYear').textContent  = currentYear;
@@ -98,8 +104,7 @@
     JFCustomWidget.subscribe("submit", function () {
       JFCustomWidget.sendSubmit({
         valid: currentYear !== "",
-        // ส่งออก: "วันเกิด|ปี,เดือน"  เช่น "1990-06-15|35,11"
-        value: currentDob + "|" + currentYear + "," + currentMonth
+        value: buildValue()
       });
     });
 
@@ -129,8 +134,8 @@
     document.getElementById('ageMonth').textContent = currentMonth;
     document.getElementById('resultBox').classList.add('show');
 
-    // ส่งค่า "วันเกิด|ปี,เดือน" ไปยัง JotForm field ทันที
-    JFCustomWidget.sendData({ value: currentDob + "|" + currentYear + "," + currentMonth });
+    // ส่งค่า "DD,MM,YYYY,ปี,เดือน" เช่น "15,06,1990,35,11"
+    JFCustomWidget.sendData({ value: buildValue() });
     JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
   });
 </script>
