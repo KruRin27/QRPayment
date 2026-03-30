@@ -77,40 +77,34 @@
   var currentMonth = "";
   var currentDob   = "";
 
-  // ดึง formId เพื่อใช้ส่ง postMessage ไปยัง Hidden Fields
-  var jfFormId = "";
-
-  // -------------------------------------------------
-  // ส่งค่าไปยัง Hidden Fields ผ่าน postMessage
-  // JotForm รับ event "setParameter" เพื่ออัปเดต field
-  // -------------------------------------------------
-  function sendToHiddenFields(dd, mm, yyyy, ageY, ageM) {
-    var fields = {
-      day:       dd,
-      month:     mm,
-      year:      yyyy,
-      age_year:  ageY,
-      age_month: ageM
-    };
-
-    Object.keys(fields).forEach(function(fieldName) {
-      window.parent.postMessage(JSON.stringify({
-        action:    "setParameter",
-        fieldName: fieldName,
-        value:     fields[fieldName]
-      }), "*");
-    });
+  // =========================================================
+  // ส่งค่าไปยัง Short Text fields ใน JotForm
+  // โดยใช้ postMessage format ที่ JotForm รับได้จริง
+  // field name ต้องตรงกับ "Unique Name" ใน JotForm field
+  // =========================================================
+  function fillField(fieldName, value) {
+    window.parent.postMessage(JSON.stringify({
+      type:      "setFieldValue",
+      fieldName: fieldName,
+      value:     String(value)
+    }), "*");
   }
 
-  // -------------------------------------------------
+  function sendToFields(dd, mm, yyyy, ageY, ageM) {
+    fillField("day",       dd);
+    fillField("month",     mm);
+    fillField("year",      yyyy);
+    fillField("age_year",  ageY);
+    fillField("age_month", ageM);
+  }
+
+  // =========================================================
   // JotForm Widget API
-  // -------------------------------------------------
-  JFCustomWidget.subscribe("ready", function (data) {
-    jfFormId = (data && data.formId) ? data.formId : "";
+  // =========================================================
+  JFCustomWidget.subscribe("ready", function () {
 
     var savedValue = JFCustomWidget.getValue();
     if (savedValue) {
-      // รูปแบบที่บันทึก: "DD,MM,YYYY,age_year,age_month"
       var parts = savedValue.split(",");
       if (parts.length === 5) {
         currentDob   = parts[2] + "-" + parts[1] + "-" + parts[0];
@@ -129,19 +123,17 @@
         value: buildValue()
       });
     });
+
   });
 
-  // -------------------------------------------------
-  // สร้าง string ผลลัพธ์ "DD,MM,YYYY,age_year,age_month"
-  // -------------------------------------------------
   function buildValue() {
-    var parts = currentDob.split("-"); // YYYY-MM-DD
+    var parts = currentDob.split("-");
     return parts[2] + "," + parts[1] + "," + parts[0] + "," + currentYear + "," + currentMonth;
   }
 
-  // -------------------------------------------------
+  // =========================================================
   // คำนวณเมื่อกดปุ่ม
-  // -------------------------------------------------
+  // =========================================================
   document.getElementById('calcBtn').addEventListener('click', function () {
     var dobVal  = document.getElementById('dob').value;
     var errorEl = document.getElementById('errorMsg');
@@ -166,12 +158,12 @@
     document.getElementById('ageMonth').textContent = currentMonth;
     document.getElementById('resultBox').classList.add('show');
 
-    // 1) ส่งค่ารวมกลับ Widget field
+    // ส่งค่ารวมกลับ Widget field ของตัวเอง
     JFCustomWidget.sendData({ value: buildValue() });
 
-    // 2) ส่งแยกไปยัง Hidden Fields แต่ละช่อง
-    var p = currentDob.split("-"); // [YYYY, MM, DD]
-    sendToHiddenFields(p[2], p[1], p[0], currentYear, currentMonth);
+    // ส่งค่าแยกไปยัง Short Text fields
+    var p = currentDob.split("-");
+    sendToFields(p[2], p[1], p[0], currentYear, currentMonth);
 
     JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
   });
